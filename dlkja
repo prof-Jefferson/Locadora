@@ -1,0 +1,219 @@
+[1mdiff --git a/Locadora.Api/DependencyInjection.cs b/Locadora.Api/DependencyInjection.cs[m
+[1mindex 2ace905..f640c43 100644[m
+[1m--- a/Locadora.Api/DependencyInjection.cs[m
+[1m+++ b/Locadora.Api/DependencyInjection.cs[m
+[36m@@ -14,38 +14,39 @@[m [mnamespace Locadora.Api;[m
+ [m
+ public static class DependencyInjection[m
+ {[m
+[31m-    public static IServiceCollection AddLocadoraInfrastructure(this IServiceCollection services, IConfiguration config)[m
+[31m-    {[m
+[31m-        var cs = config.GetConnectionString("MariaDb");[m
+[31m-[m
+[31m-        services.AddDbContext<LocadoraDbContext>(opt =>[m
+[31m-            opt.UseMySql(cs, ServerVersion.AutoDetect(cs)));[m
+[31m-[m
+[31m-        // UoW + Repositories[m
+[31m-        services.AddScoped<IUnitOfWork, UnitOfWorkEf>();[m
+[31m-        services.AddScoped<IClienteRepository, ClienteRepositoryEf>();[m
+[31m-        services.AddScoped<IVeiculoRepository, VeiculoRepositoryEf>();[m
+[31m-        services.AddScoped<ILocacaoRepository, LocacaoRepositoryEf>();[m
+[31m-[m
+[31m-        // Event bus + stores + handlers[m
+[31m-        services.AddSingleton<IEventBus, InMemoryEventBus>();[m
+[31m-        services.AddSingleton<IOrdemServicoStore, InMemoryOrdemServicoStore>();[m
+[31m-[m
+[31m-        services.AddSingleton<PatioHandler>();[m
+[31m-        services.AddSingleton<LavaRapidoHandler>();[m
+[31m-        services.AddSingleton<ManutencaoHandler>();[m
+[31m-[m
+[31m-        return services;[m
+[31m-    }[m
+[31m-[m
+[31m-    public static IServiceCollection AddLocadoraApplication(this IServiceCollection services)[m
+[31m-    {[m
+[31m-        // Use cases[m
+[31m-        services.AddScoped<ListarVeiculosDisponiveisUseCase>();[m
+[31m-        services.AddScoped<AbrirLocacaoUseCase>();[m
+[31m-        services.AddScoped<DevolverVeiculoUseCase>();[m
+[31m-        services.AddScoped<ConcluirLavagemUseCase>();[m
+[31m-[m
+[31m-        return services;[m
+[31m-    }[m
+[32m+[m	[32mpublic static IServiceCollection AddLocadoraInfrastructure(this IServiceCollection services, IConfiguration config)[m
+[32m+[m	[32m{[m
+[32m+[m		[32mvar cs = config.GetConnectionString("MariaDb");[m
+[32m+[m
+[32m+[m		[32mservices.AddDbContext<LocadoraDbContext>(opt =>[m
+[32m+[m			[32mopt.UseMySql(cs, ServerVersion.AutoDetect(cs)));[m
+[32m+[m
+[32m+[m		[32m// UoW + Repositories[m
+[32m+[m		[32mservices.AddScoped<IUnitOfWork, UnitOfWorkEf>();[m
+[32m+[m		[32mservices.AddScoped<IClienteRepository, ClienteRepositoryEf>();[m
+[32m+[m		[32mservices.AddScoped<IVeiculoRepository, VeiculoRepositoryEf>();[m
+[32m+[m		[32mservices.AddScoped<ILocacaoRepository, LocacaoRepositoryEf>();[m
+[32m+[m
+[32m+[m		[32m// Event bus + stores + handlers[m
+[32m+[m		[32mservices.AddSingleton<IEventBus, InMemoryEventBus>();[m
+[32m+[m		[32mservices.AddSingleton<IOrdemServicoStore, InMemoryOrdemServicoStore>();[m
+[32m+[m
+[32m+[m		[32mservices.AddScoped<PatioHandler>();[m
+[32m+[m		[32mservices.AddScoped<LavaRapidoHandler>();[m
+[32m+[m		[32mservices.AddScoped<ManutencaoHandler>();[m
+[32m+[m		[32mservices.AddScoped<DisponibilidadeHandler>();[m
+[32m+[m
+[32m+[m		[32mreturn services;[m
+[32m+[m	[32m}[m
+[32m+[m
+[32m+[m	[32mpublic static IServiceCollection AddLocadoraApplication(this IServiceCollection services)[m
+[32m+[m	[32m{[m
+[32m+[m		[32m// Use cases[m
+[32m+[m		[32mservices.AddScoped<ListarVeiculosDisponiveisUseCase>();[m
+[32m+[m		[32mservices.AddScoped<AbrirLocacaoUseCase>();[m
+[32m+[m		[32mservices.AddScoped<DevolverVeiculoUseCase>();[m
+[32m+[m		[32mservices.AddScoped<ConcluirLavagemUseCase>();[m
+[32m+[m
+[32m+[m		[32mreturn services;[m
+[32m+[m	[32m}[m
+ }[m
+[1mdiff --git a/Locadora.Api/EventSubscriptions.cs b/Locadora.Api/EventSubscriptions.cs[m
+[1mindex fea18f1..a485990 100644[m
+[1m--- a/Locadora.Api/EventSubscriptions.cs[m
+[1m+++ b/Locadora.Api/EventSubscriptions.cs[m
+[36m@@ -11,9 +11,29 @@[m [mpublic static class EventSubscriptions[m
+     {[m
+         var bus = app.Services.GetRequiredService<IEventBus>();[m
+ [m
+[31m-        bus.Subscribe<VeiculoLocado>(app.Services.GetRequiredService<PatioHandler>().OnVeiculoLocado);[m
+[31m-        bus.Subscribe<VeiculoDevolvido>(app.Services.GetRequiredService<LavaRapidoHandler>().OnVeiculoDevolvido);[m
+[31m-        bus.Subscribe<VeiculoLavado>(app.Services.GetRequiredService<ManutencaoHandler>().OnVeiculoLavado);[m
+[32m+[m[32m        bus.Subscribe<VeiculoLocado>(async (ev, ct) =>[m
+[32m+[m[32m        {[m
+[32m+[m[32m            using var scope = app.Services.CreateScope();[m
+[32m+[m[32m            var handler = scope.ServiceProvider.GetRequiredService<PatioHandler>();[m
+[32m+[m[32m            await handler.OnVeiculoLocado(ev, ct);[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m        bus.Subscribe<VeiculoDevolvido>(async (ev, ct) =>[m
+[32m+[m[32m        {[m
+[32m+[m[32m            using var scope = app.Services.CreateScope();[m
+[32m+[m[32m            var handler = scope.ServiceProvider.GetRequiredService<LavaRapidoHandler>();[m
+[32m+[m[32m            await handler.OnVeiculoDevolvido(ev, ct);[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m        bus.Subscribe<VeiculoLavado>(async (ev, ct) =>[m
+[32m+[m[32m        {[m
+[32m+[m[32m            using var scope = app.Services.CreateScope();[m
+[32m+[m[32m            var manut = scope.ServiceProvider.GetRequiredService<ManutencaoHandler>();[m
+[32m+[m[32m            await manut.OnVeiculoLavado(ev, ct);[m
+[32m+[m
+[32m+[m[32m            var disp = scope.ServiceProvider.GetRequiredService<DisponibilidadeHandler>();[m
+[32m+[m[32m            await disp.OnVeiculoLavado(ev, ct);[m
+[32m+[m[32m        });[m
+ [m
+         return app;[m
+     }[m
+[1mdiff --git a/Locadora.Api/Program.cs b/Locadora.Api/Program.cs[m
+[1mindex ee0582f..0e20fbc 100644[m
+[1m--- a/Locadora.Api/Program.cs[m
+[1m+++ b/Locadora.Api/Program.cs[m
+[36m@@ -8,7 +8,7 @@[m [mbuilder.Services.AddEndpointsApiExplorer();[m
+ builder.Services.AddSwaggerGen();[m
+ [m
+ builder.Services.AddLocadoraInfrastructure(builder.Configuration);[m
+[31m-builder.Services.AddLocadoraApplication(); // opcional; aqui fica só os use cases se quiser[m
+[32m+[m[32mbuilder.Services.AddLocadoraApplication();[m
+ [m
+ var app = builder.Build();[m
+ [m
+[36m@@ -19,7 +19,7 @@[m [mapp.UseLocadoraEventSubscriptions();[m
+ [m
+ if (app.Environment.IsDevelopment())[m
+ {[m
+[31m-    await app.SeedDevDataAsync();[m
+[32m+[m	[32mawait app.SeedDevDataAsync();[m
+ }[m
+ [m
+ app.MapLocadoraEndpoints();[m
+[1mdiff --git a/Locadora.Application/Ports/IVeiculoRepository.cs b/Locadora.Application/Ports/IVeiculoRepository.cs[m
+[1mindex 3f9bbac..bcaa8ca 100644[m
+[1m--- a/Locadora.Application/Ports/IVeiculoRepository.cs[m
+[1m+++ b/Locadora.Application/Ports/IVeiculoRepository.cs[m
+[36m@@ -4,7 +4,9 @@[m [mnamespace Locadora.Application.Ports;[m
+ [m
+ public interface IVeiculoRepository[m
+ {[m
+[31m-    Task<IReadOnlyList<VeiculoDto>> ListarDisponiveisAsync(CancellationToken ct = default);[m
+[31m-    Task<bool> TryMarcarComoIndisponivelAsync(Guid veiculoId, CancellationToken ct = default);[m
+[31m-    Task MarcarComoDisponivelAsync(Guid veiculoId, CancellationToken ct = default);[m
+[32m+[m	[32mTask<IReadOnlyList<VeiculoDto>> ListarDisponiveisAsync(CancellationToken ct = default);[m
+[32m+[m	[32mTask<bool> TryMarcarComoIndisponivelAsync(Guid veiculoId, CancellationToken ct = default);[m
+[32m+[m	[32mTask MarcarComoIndisponivelAsync(Guid veiculoId, CancellationToken ct = default);[m
+[32m+[m	[32mTask MarcarComoDisponivelAsync(Guid veiculoId, CancellationToken ct = default);[m
+[32m+[m
+ }[m
+[1mdiff --git a/Locadora.Application/UseCases/DevolverVeiculoUseCase.cs b/Locadora.Application/UseCases/DevolverVeiculoUseCase.cs[m
+[1mindex 41cd223..1787f7b 100644[m
+[1m--- a/Locadora.Application/UseCases/DevolverVeiculoUseCase.cs[m
+[1m+++ b/Locadora.Application/UseCases/DevolverVeiculoUseCase.cs[m
+[36m@@ -41,7 +41,7 @@[m [mpublic sealed class DevolverVeiculoUseCase[m
+ 			if (!ok)[m
+ 				throw new InvalidOperationException("Não foi possível encerrar a locação (talvez já tenha sido encerrada).");[m
+ [m
+[31m-			await _veiculos.MarcarComoDisponivelAsync(info.VeiculoId, tct);[m
+[32m+[m			[32mawait _veiculos.MarcarComoIndisponivelAsync(info.VeiculoId, tct);[m
+ 		}, ct); [m
+ 		await _bus.PublishAsync(new VeiculoDevolvido(locacaoId, info.VeiculoId, info.ClienteId, DateTime.UtcNow), ct);[m
+ [m
+[1mdiff --git a/Locadora.Infrastructure/Events/Handlers/DisponibilidadeHandler.cs b/Locadora.Infrastructure/Events/Handlers/DisponibilidadeHandler.cs[m
+[1mnew file mode 100644[m
+[1mindex 0000000..26f4f20[m
+[1m--- /dev/null[m
+[1m+++ b/Locadora.Infrastructure/Events/Handlers/DisponibilidadeHandler.cs[m
+[36m@@ -0,0 +1,23 @@[m
+[32m+[m[32musing Locadora.Application.Events;[m
+[32m+[m[32musing Locadora.Application.Ports;[m
+[32m+[m[32musing Microsoft.Extensions.Logging;[m
+[32m+[m
+[32m+[m[32mnamespace Locadora.Infrastructure.Events.Handlers;[m
+[32m+[m
+[32m+[m[32mpublic sealed class DisponibilidadeHandler[m
+[32m+[m[32m{[m
+[32m+[m[32m    private readonly IVeiculoRepository _veiculos;[m
+[32m+[m[32m    private readonly ILogger<DisponibilidadeHandler> _log;[m
+[32m+[m
+[32m+[m[32m    public DisponibilidadeHandler(IVeiculoRepository veiculos, ILogger<DisponibilidadeHandler> log)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        _veiculos = veiculos;[m
+[32m+[m[32m        _log = log;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    public async Task OnVeiculoLavado(VeiculoLavado ev, CancellationToken ct)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        await _veiculos.MarcarComoDisponivelAsync(ev.VeiculoId, ct);[m
+[32m+[m[32m        _log.LogInformation("PÁTIO: veículo {VeiculoId} liberado após lavagem.", ev.VeiculoId);[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/Locadora.Infrastructure/Repositories/VeiculoRepositoryEf.cs b/Locadora.Infrastructure/Repositories/VeiculoRepositoryEf.cs[m
+[1mindex d17a7c6..7574e52 100644[m
+[1m--- a/Locadora.Infrastructure/Repositories/VeiculoRepositoryEf.cs[m
+[1m+++ b/Locadora.Infrastructure/Repositories/VeiculoRepositoryEf.cs[m
+[36m@@ -40,10 +40,17 @@[m [mpublic sealed class VeiculoRepositoryEf : IVeiculoRepository[m
+ 		return afetadas == 1;[m
+ 	}[m
+ 	[m
+[32m+[m	[32mpublic async Task MarcarComoIndisponivelAsync(Guid veiculoId, CancellationToken ct = default)[m
+[32m+[m	[32m{[m
+[32m+[m		[32mawait _db.Veiculos[m
+[32m+[m			[32m.Where(v => v.Id == veiculoId && v.Ativo)[m
+[32m+[m			[32m.ExecuteUpdateAsync(s => s.SetProperty(v => v.Disponivel, false), ct);[m
+[32m+[m	[32m}[m
+[32m+[m[41m	[m
+ 	public async Task MarcarComoDisponivelAsync(Guid veiculoId, CancellationToken ct = default)[m
+ 	{[m
+ 		await _db.Veiculos[m
+ 			.Where(v => v.Id == veiculoId && v.Ativo)[m
+ 			.ExecuteUpdateAsync(s => s.SetProperty(v => v.Disponivel, true), ct);[m
+[31m-	}[m
+[32m+[m	[32m}[m[41m	[m
+ }[m

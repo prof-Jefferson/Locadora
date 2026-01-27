@@ -40,10 +40,17 @@ public sealed class VeiculoRepositoryEf : IVeiculoRepository
 		return afetadas == 1;
 	}
 	
+	public async Task MarcarComoIndisponivelAsync(Guid veiculoId, CancellationToken ct = default)
+	{
+		await _db.Veiculos
+			.Where(v => v.Id == veiculoId && v.Ativo)
+			.ExecuteUpdateAsync(s => s.SetProperty(v => v.Disponivel, false), ct);
+	}
+	
 	public async Task MarcarComoDisponivelAsync(Guid veiculoId, CancellationToken ct = default)
 	{
 		await _db.Veiculos
 			.Where(v => v.Id == veiculoId && v.Ativo)
 			.ExecuteUpdateAsync(s => s.SetProperty(v => v.Disponivel, true), ct);
-	}
+	}	
 }

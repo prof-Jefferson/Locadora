@@ -8,7 +8,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddLocadoraInfrastructure(builder.Configuration);
-builder.Services.AddLocadoraApplication(); // opcional; aqui fica só os use cases se quiser
+builder.Services.AddLocadoraApplication();
 
 var app = builder.Build();
 
@@ -19,7 +19,7 @@ app.UseLocadoraEventSubscriptions();
 
 if (app.Environment.IsDevelopment())
 {
-    await app.SeedDevDataAsync();
+	await app.SeedDevDataAsync();
 }
 
 app.MapLocadoraEndpoints();

@@ -41,7 +41,7 @@ public sealed class DevolverVeiculoUseCase
 			if (!ok)
 				throw new InvalidOperationException("Não foi possível encerrar a locação (talvez já tenha sido encerrada).");
 
-			await _veiculos.MarcarComoDisponivelAsync(info.VeiculoId, tct);
+			await _veiculos.MarcarComoIndisponivelAsync(info.VeiculoId, tct);
 		}, ct); 
 		await _bus.PublishAsync(new VeiculoDevolvido(locacaoId, info.VeiculoId, info.ClienteId, DateTime.UtcNow), ct);
 

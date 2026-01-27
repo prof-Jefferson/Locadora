@@ -11,9 +11,29 @@ public static class EventSubscriptions
     {
         var bus = app.Services.GetRequiredService<IEventBus>();
 
-        bus.Subscribe<VeiculoLocado>(app.Services.GetRequiredService<PatioHandler>().OnVeiculoLocado);
-        bus.Subscribe<VeiculoDevolvido>(app.Services.GetRequiredService<LavaRapidoHandler>().OnVeiculoDevolvido);
-        bus.Subscribe<VeiculoLavado>(app.Services.GetRequiredService<ManutencaoHandler>().OnVeiculoLavado);
+        bus.Subscribe<VeiculoLocado>(async (ev, ct) =>
+        {
+            using var scope = app.Services.CreateScope();
+            var handler = scope.ServiceProvider.GetRequiredService<PatioHandler>();
+            await handler.OnVeiculoLocado(ev, ct);
+        });
+
+        bus.Subscribe<VeiculoDevolvido>(async (ev, ct) =>
+        {
+            using var scope = app.Services.CreateScope();
+            var handler = scope.ServiceProvider.GetRequiredService<LavaRapidoHandler>();
+            await handler.OnVeiculoDevolvido(ev, ct);
+        });
+
+        bus.Subscribe<VeiculoLavado>(async (ev, ct) =>
+        {
+            using var scope = app.Services.CreateScope();
+            var manut = scope.ServiceProvider.GetRequiredService<ManutencaoHandler>();
+            await manut.OnVeiculoLavado(ev, ct);
+
+            var disp = scope.ServiceProvider.GetRequiredService<DisponibilidadeHandler>();
+            await disp.OnVeiculoLavado(ev, ct);
+        });
 
         return app;
     }
