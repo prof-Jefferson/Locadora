@@ -3,6 +3,7 @@ using Locadora.Infrastructure.Persistence;
 using Locadora.Infrastructure.Persistence.Entities;
 using Locadora.Application.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Locadora.Domain.Locacoes;
 
 namespace Locadora.Infrastructure.Repositories;
 
@@ -22,7 +23,7 @@ public sealed class LocacaoRepositoryEf : ILocacaoRepository
 			Retirada = retirada,
 			Prevista = prevista,
 			Devolucao = null,
-			Status = "ATIVA",
+			Status = StatusLocacao.Ativa,
 			ValorPrevisto = 0m,
 			ValorFinal = null,
 			CriadoEm = DateTime.UtcNow
@@ -43,10 +44,9 @@ public sealed class LocacaoRepositoryEf : ILocacaoRepository
 	public async Task<bool> EncerrarAsync(Guid locacaoId, DateOnly devolucao, CancellationToken ct = default)
 	{
 		var afetadas = await _db.Locacoes
-			.Where(l => l.Id == locacaoId && l.Status == "ATIVA")
-			.ExecuteUpdateAsync(setters => setters
+			.Where(l => l.Id == locacaoId && l.Status == StatusLocacao.Ativa).ExecuteUpdateAsync(setters => setters
 				.SetProperty(x => x.Devolucao, devolucao)
-				.SetProperty(x => x.Status, "ENCERRADA")
+				.SetProperty(x => x.Status, StatusLocacao.Encerrada)
 				.SetProperty(x => x.ValorFinal, x => x.ValorPrevisto), ct);
 
 		return afetadas == 1;
