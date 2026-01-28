@@ -1,8 +1,11 @@
 using Locadora.Application.DTOs;
 using Locadora.Application.Ports;
 using Locadora.Application.UseCases;
+using Locadora.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Locadora.Domain.Locacoes;
 
 namespace Locadora.Api;
 
@@ -30,19 +33,19 @@ public static class Endpoints
 			return ok ? Results.Ok() : Results.NotFound();
 		});
 		
-		app.MapGet("/locacoes", async (
-			int page,
-			int pageSize,
-			string? status,
-			LocadoraDbContext db,
-			CancellationToken ct) =>
-		{
+			app.MapGet("/locacoes", async (
+				int page,
+				int pageSize,
+				StatusLocacao? status,
+				LocadoraDbContext db,
+				CancellationToken ct) =>
+			{
 			page = page <= 0 ? 1 : page;
 			pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
 
 			var q = db.Locacoes.AsNoTracking();
 
-			if (!string.IsNullOrWhiteSpace(status))
+			if (status is not null)
 				q = q.Where(l => l.Status == status);
 
 			var total = await q.CountAsync(ct);

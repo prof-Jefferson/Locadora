@@ -1,10 +1,13 @@
-LocacaoDtopublic sealed record LocacaoDto(
+using Locadora.Domain.Locacoes;
+
+public sealed record LocacaoDto(
     Guid Id,
     Guid ClienteId,
     Guid VeiculoId,
-    string Status,
+    StatusLocacao Status,
     DateOnly Retirada,
     DateOnly Prevista,
     DateOnly? Devolucao,
     DateTime CriadoEmUtc
 );
+
