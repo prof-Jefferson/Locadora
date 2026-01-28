@@ -9,8 +9,16 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddLocadoraInfrastructure(builder.Configuration);
 builder.Services.AddLocadoraApplication();
+builder.Services.AddCors(opt =>
+{
+	opt.AddDefaultPolicy(p => p
+		.AllowAnyOrigin()
+		.AllowAnyHeader()
+		.AllowAnyMethod());
+});
 
 var app = builder.Build();
+app.UseCors();
 
 app.UseSwagger();
 app.UseSwaggerUI();
