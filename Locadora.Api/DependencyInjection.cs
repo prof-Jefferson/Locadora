@@ -29,7 +29,7 @@ public static class DependencyInjection
 
 		// Event bus + stores + handlers
 		services.AddSingleton<IEventBus, InMemoryEventBus>();
-		services.AddSingleton<IOrdemServicoStore, InMemoryOrdemServicoStore>();
+		services.AddScoped<IOrdemServicoStore, OrdemServicoStoreEf>();
 
 		services.AddScoped<PatioHandler>();
 		services.AddScoped<LavaRapidoHandler>();
